@@ -3,172 +3,167 @@
 <head>
 <meta charset="UTF-8">
 <title>Mexico Route Editor</title>
-
 <style>
-    body {
-        margin: 0;
-        background: #0d0d0d;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        font-family: Arial, sans-serif;
-    }
+  body {
+    margin: 0;
+    background: #0d0d0d;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: Arial, sans-serif;
+  }
 
-    #map-wrapper {
-        position: relative;
-        width: 90vw;
-        height: calc(90vw * 832 / 1248);
-        max-width: calc(90vh * 1248 / 832);
-        max-height: 90vh;
-        border-radius: 20px;
-        overflow: hidden;
-        box-shadow: 0 0 40px rgba(0,0,0,0.6);
-        background: black;
-    }
+  #map-wrapper {
+    position: relative;
+    width: 90vw;
+    height: calc(90vw * 832 / 1248);
+    max-width: calc(90vh * 1248 / 832);
+    max-height: 90vh;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 0 40px rgba(0,0,0,0.6);
+  }
 
-    #map {
-        position: absolute;
-        inset: 0;
-        background-image: url('BingAIGC.jpg');
-        background-size: 100% 100%;
-        background-repeat: no-repeat;
-    }
+  #map {
+    position: absolute;
+    inset: 0;
+    background-image: url('BingAIGC.jpg');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+  }
 
-    .checkpoint {
-        position: absolute;
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: rgba(255,255,255,0.2);
-        border: 2px solid #fff;
-        color: white;
-        font-size: 14px;
-        font-weight: bold;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        cursor: grab;
-        transform: translate(-50%, -50%);
-        user-select: none;
-    }
+  .checkpoint {
+    position: absolute;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    border: 2px solid #fff;
+    color: white;
+    font-weight: bold;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: grab;
+    transform: translate(-50%, -50%);
+    user-select: none;
+  }
 
-    .checkpoint:active {
-        cursor: grabbing;
-    }
+  .checkpoint:active {
+    cursor: grabbing;
+  }
 
-    #save-box {
-        position: fixed;
-        bottom: 20px;
-        left: 20px;
-        background: rgba(20,20,20,0.9);
-        padding: 15px;
-        border-radius: 10px;
-        color: white;
-        width: 400px;
-        font-size: 14px;
-        display: none;
-    }
+  #save-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #00e6c6;
+    color: black;
+    padding: 12px 20px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: bold;
+    border: none;
+    font-size: 16px;
+  }
 
-    #save-btn {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background: #00e6c6;
-        color: black;
-        padding: 12px 20px;
-        border-radius: 10px;
-        cursor: pointer;
-        font-weight: bold;
-        border: none;
-        font-size: 16px;
-    }
+  #save-box {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(20,20,20,0.9);
+    padding: 15px;
+    border-radius: 10px;
+    color: white;
+    width: 400px;
+    font-size: 13px;
+    display: none;
+    white-space: pre-wrap;
+  }
 </style>
 </head>
 <body>
 
 <div id="map-wrapper">
-    <div id="map"></div>
+  <div id="map"></div>
 </div>
 
 <button id="save-btn">Сохранить координаты</button>
-
 <div id="save-box"></div>
 
 <script>
-/* Исходные координаты */
 let checkpoints = [
-    { id: 1,  name: "Mexico City (Zócalo)",          x: 650, y: 520 },
-    { id: 2,  name: "Iztaccihuatl Volcano",          x: 670, y: 500 },
-    { id: 3,  name: "Pico de Orizaba",               x: 750, y: 500 },
-    { id: 4,  name: "El Mirador del Cuervo (Hidalgo)", x: 650, y: 480 },
-    { id: 5,  name: "Teotihuacan Pyramids",          x: 680, y: 480 },
-    { id: 6,  name: "San Miguel de Allende",         x: 600, y: 470 },
-    { id: 7,  name: "Guanajuato",                    x: 590, y: 460 },
-    { id: 8,  name: "Zacatecas",                     x: 540, y: 430 },
-    { id: 9,  name: "Guadalajara",                   x: 520, y: 500 },
-    { id: 10, name: "Tequila",                       x: 510, y: 490 },
-    { id: 11, name: "La Quemada Ruins",              x: 540, y: 440 },
-    { id: 12, name: "Durango",                       x: 500, y: 400 },
-    { id: 13, name: "Torreon",                       x: 530, y: 390 },
-    { id: 14, name: "Coahuila Plains",               x: 560, y: 370 },
-    { id: 15, name: "Casas Grandes (Paquimé)",       x: 480, y: 360 },
-    { id: 16, name: "Ciudad Juarez",                 x: 470, y: 340 },
-    { id: 17, name: "Sonora Desert",                 x: 430, y: 350 },
-    { id: 18, name: "Hermosillo",                    x: 410, y: 380 },
-    { id: 19, name: "Guaymas & San Carlos",          x: 400, y: 410 },
-    { id: 20, name: "Puerto Peñasco",                x: 430, y: 330 },
-    { id: 21, name: "San Felipe",                    x: 390, y: 320 },
-    { id: 22, name: "Guadalupe Valley",              x: 360, y: 310 },
-    { id: 23, name: "Guerrero Negro",                x: 330, y: 360 },
-    { id: 24, name: "Rosarito",                      x: 350, y: 300 }
+  { id: 1, name: "Mexico City (Zócalo)", x: 650, y: 520 },
+  { id: 2, name: "Iztaccihuatl Volcano", x: 670, y: 500 },
+  { id: 3, name: "Pico de Orizaba", x: 750, y: 500 },
+  { id: 4, name: "El Mirador del Cuervo (Hidalgo)", x: 650, y: 480 },
+  { id: 5, name: "Teotihuacan Pyramids", x: 680, y: 480 },
+  { id: 6, name: "San Miguel de Allende", x: 600, y: 470 },
+  { id: 7, name: "Guanajuato", x: 590, y: 460 },
+  { id: 8, name: "Zacatecas", x: 540, y: 430 },
+  { id: 9, name: "Guadalajara", x: 520, y: 500 },
+  { id: 10, name: "Tequila", x: 510, y: 490 },
+  { id: 11, name: "La Quemada Ruins", x: 540, y: 440 },
+  { id: 12, name: "Durango", x: 500, y: 400 },
+  { id: 13, name: "Torreon", x: 530, y: 390 },
+  { id: 14, name: "Coahuila Plains", x: 560, y: 370 },
+  { id: 15, name: "Casas Grandes (Paquimé)", x: 480, y: 360 },
+  { id: 16, name: "Ciudad Juarez", x: 470, y: 340 },
+  { id: 17, name: "Sonora Desert", x: 430, y: 350 },
+  { id: 18, name: "Hermosillo", x: 410, y: 380 },
+  { id: 19, name: "Guaymas & San Carlos", x: 400, y: 410 },
+  { id: 20, name: "Puerto Peñasco", x: 430, y: 330 },
+  { id: 21, name: "San Felipe", x: 390, y: 320 },
+  { id: 22, name: "Guadalupe Valley", x: 360, y: 310 },
+  { id: 23, name: "Guerrero Negro", x: 330, y: 360 },
+  { id: 24, name: "Rosarito", x: 350, y: 300 }
 ];
 
 const wrapper = document.getElementById("map-wrapper");
 
 /* Рендер точек */
 checkpoints.forEach(cp => {
-    const el = document.createElement("div");
-    el.className = "checkpoint";
-    el.textContent = cp.id;
+  const el = document.createElement("div");
+  el.className = "checkpoint";
+  el.textContent = cp.id;
+  el.style.left = cp.x + "px";
+  el.style.top = cp.y + "px";
+  el.dataset.id = cp.id;
+  wrapper.appendChild(el);
 
-    el.style.left = cp.x + "px";
-    el.style.top  = cp.y + "px";
+  let dragging = false;
 
-    el.dataset.id = cp.id;
+  el.addEventListener("pointerdown", e => {
+    dragging = true;
+    el.setPointerCapture(e.pointerId);
+  });
 
-    wrapper.appendChild(el);
+  el.addEventListener("pointermove", e => {
+    if (!dragging) return;
+    const rect = wrapper.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+    const cpIndex = cp.id - 1;
+    checkpoints[cpIndex].x = Math.round(x);
+    checkpoints[cpIndex].y = Math.round(y);
+  });
 
-    let dragging = false;
-
-    el.addEventListener("mousedown", () => dragging = true);
-    document.addEventListener("mouseup", () => dragging = false);
-
-    document.addEventListener("mousemove", e => {
-        if (!dragging) return;
-
-        const rect = wrapper.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-
-        el.style.left = x + "px";
-        el.style.top  = y + "px";
-
-        const cpIndex = cp.id - 1;
-        checkpoints[cpIndex].x = Math.round(x);
-        checkpoints[cpIndex].y = Math.round(y);
-    });
+  el.addEventListener("pointerup", e => {
+    dragging = false;
+    el.releasePointerCapture(e.pointerId);
+  });
 });
 
 /* Сохранение */
 document.getElementById("save-btn").onclick = () => {
-    const box = document.getElementById("save-box");
-    box.style.display = "block";
-
-    const json = JSON.stringify(checkpoints, null, 4);
-    box.textContent = json;
-
-    console.log("Новые координаты:", json);
+  const box = document.getElementById("save-box");
+  box.style.display = "block";
+  const json = JSON.stringify(checkpoints, null, 4);
+  box.textContent = json;
+  console.log("Новые координаты:", json);
 };
 </script>
 
