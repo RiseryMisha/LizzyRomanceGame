@@ -1,171 +1,531 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>Mexico Route Editor</title>
-<style>
-  body {
-    margin: 0;
-    background: #0d0d0d;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    font-family: Arial, sans-serif;
-  }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Romantic Adventure - Mexico Route</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-  #map-wrapper {
-    position: relative;
-    width: 90vw;
-    height: calc(90vw * 832 / 1248);
-    max-width: calc(90vh * 1248 / 832);
-    max-height: 90vh;
-    border-radius: 20px;
-    overflow: hidden;
-    box-shadow: 0 0 40px rgba(0,0,0,0.6);
-  }
+        body {
+            background-color: #2b1810;
+            font-family: 'Georgia', serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
 
-  #map {
-    position: absolute;
-    inset: 0;
-    background-image: url('BingAIGC.jpg');
-    background-size: 100% 100%;
-    background-repeat: no-repeat;
-  }
+        /* Main layout container */
+        .game-layout {
+            display: flex;
+            width: 95vw;
+            height: 90vh;
+            max-width: 1600px;
+            background: #1a0f0a;
+            border: 6px solid #d4af37;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+            overflow: hidden;
+        }
 
-  .checkpoint {
-    position: absolute;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.2);
-    border: 2px solid #fff;
-    color: white;
-    font-weight: bold;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: grab;
-    transform: translate(-50%, -50%);
-    user-select: none;
-  }
+        /* Left section: Map (75%) */
+        .map-section {
+            position: relative;
+            width: 75%;
+            height: 100%;
+            background: #000;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-  .checkpoint:active {
-    cursor: grabbing;
-  }
+        .map-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
 
-  #save-btn {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: #00e6c6;
-    color: black;
-    padding: 12px 20px;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: bold;
-    border: none;
-    font-size: 16px;
-  }
+        /* SVG layer for route lines */
+        .route-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
 
-  #save-box {
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    background: rgba(20,20,20,0.9);
-    padding: 15px;
-    border-radius: 10px;
-    color: white;
-    width: 400px;
-    font-size: 13px;
-    display: none;
-    white-space: pre-wrap;
-  }
-</style>
+        /* Unvisited path (red dashed) */
+        .route-line-pending {
+            fill: none;
+            stroke: #ff3333;
+            stroke-width: 3;
+            stroke-dasharray: 6, 6;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            filter: drop-shadow(0 0 4px #ff0000);
+        }
+
+        /* Completed path (blue solid) */
+        .route-line-completed {
+            fill: none;
+            stroke: #00bfff;
+            stroke-width: 4;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            filter: drop-shadow(0 0 6px #00bfff);
+        }
+
+        /* Right section: Interactive info panel (25%) */
+        .info-section {
+            width: 25%;
+            height: 100%;
+            background: #f4e8c1;
+            background-image: linear-gradient(to bottom, #fdf6e2, #e6d2a5);
+            border-left: 4px solid #b8860b;
+            padding: 25px 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            color: #2b1810;
+            box-shadow: inset 10px 0 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .info-header h2 {
+            font-size: 19px;
+            color: #8b0000;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #d4af37;
+            padding-bottom: 8px;
+            text-align: center;
+        }
+
+        .info-img-large {
+            width: 100%;
+            max-height: 220px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto 15px auto;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+        }
+
+        .info-body {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #3b2219;
+            overflow-y: auto;
+            max-height: calc(90vh - 350px);
+            padding-right: 5px;
+        }
+
+        .info-body p {
+            margin-bottom: 12px;
+        }
+
+        .action-btn {
+            display: block;
+            width: 100%;
+            background: #8b0000;
+            color: #fff;
+            border: none;
+            padding: 12px;
+            font-size: 14px;
+            font-family: 'Georgia', serif;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .action-btn:hover {
+            background: #a00000;
+            transform: scale(1.02);
+        }
+
+        .action-btn.completed-status {
+            background: #2e7d32;
+            cursor: default;
+            transform: none;
+        }
+
+        .action-btn.locked-status {
+            background: #795548;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .info-footer {
+            text-align: center;
+            font-size: 12px;
+            color: #705335;
+            font-style: italic;
+            border-top: 1px solid #d4af37;
+            padding-top: 8px;
+        }
+
+        /* Checkpoints */
+        .checkpoint {
+            position: absolute;
+            width: 81px;
+            height: 81px;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            z-index: 10;
+            background: transparent;
+            border: none;
+        }
+
+        .checkpoint img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+        }
+
+        .checkpoint span {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 14px;
+            font-weight: bold;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .checkpoint img:not([src]), .checkpoint img[src=""] {
+            display: none;
+        }
+
+        .checkpoint.locked {
+            cursor: not-allowed;
+        }
+
+        .checkpoint:not(.locked):hover {
+            transform: translate(-50%, -50%) scale(1.35);
+            z-index: 20;
+        }
+
+        /* Coordinates for 24 checkpoints */
+        .cp-1  { top: 76.4%; left: 61.5%; }
+        .cp-2  { top: 86.1%; left: 68.8%; }
+        .cp-3  { top: 76.9%; left: 74.9%; }
+        .cp-4  { top: 70.6%; left: 69.4%; }
+        .cp-5  { top: 65.8%; left: 65.7%; }
+        .cp-6  { top: 54.4%; left: 60.6%; }
+        .cp-7  { top: 66.9%; left: 55.2%; }
+        .cp-8  { top: 56.0%; left: 51.4%; }
+        .cp-9  { top: 71.0%; left: 47.2%; }
+        .cp-10 { top: 62.2%; left: 40.0%; }
+        .cp-11 { top: 51.0%; left: 44.2%; }
+        .cp-12 { top: 44.2%; left: 38.0%; }
+        .cp-13 { top: 36.6%; left: 45.9%; }
+        .cp-14 { top: 32.4%; left: 54.7%; }
+        .cp-15 { top: 19.8%; left: 50.9%; }
+        .cp-16 { top: 8.8%;  left: 55.2%; }
+        .cp-17 { top: 13.3%; left: 33.3%; }
+        .cp-18 { top: 27.3%; left: 31.8%; }
+        .cp-19 { top: 41.2%; left: 27.3%; }
+        .cp-20 { top: 14.5%; left: 22.5%; }
+        .cp-21 { top: 21.9%; left: 6.7%;  }
+        .cp-22 { top: 29.3%; left: 10.5%; }
+        .cp-23 { top: 26.2%; left: 19.8%; }
+        .cp-24 { top: 10.9%; left: 8.1%;  }
+    </style>
 </head>
 <body>
 
-<div id="map-wrapper">
-  <div id="map"></div>
-</div>
+    <div class="game-layout">
+        <!-- Left section: Map -->
+        <div class="map-section" id="mapContainer">
+            <img src="BingAIGC.jpg" alt="Map of Mexico" class="map-image" id="mapImg">
 
-<button id="save-btn">Сохранить координаты</button>
-<div id="save-box"></div>
+            <!-- SVG layer for route lines -->
+            <svg class="route-svg">
+                <polyline id="routePending" class="route-line-pending" points="" />
+                <polyline id="routeCompleted" class="route-line-completed" points="" />
+            </svg>
 
-<script>
-let checkpoints = [
-  { id: 1, name: "Mexico City (Zócalo)", x: 650, y: 520 },
-  { id: 2, name: "Iztaccihuatl Volcano", x: 670, y: 500 },
-  { id: 3, name: "Pico de Orizaba", x: 750, y: 500 },
-  { id: 4, name: "El Mirador del Cuervo (Hidalgo)", x: 650, y: 480 },
-  { id: 5, name: "Teotihuacan Pyramids", x: 680, y: 480 },
-  { id: 6, name: "San Miguel de Allende", x: 600, y: 470 },
-  { id: 7, name: "Guanajuato", x: 590, y: 460 },
-  { id: 8, name: "Zacatecas", x: 540, y: 430 },
-  { id: 9, name: "Guadalajara", x: 520, y: 500 },
-  { id: 10, name: "Tequila", x: 510, y: 490 },
-  { id: 11, name: "La Quemada Ruins", x: 540, y: 440 },
-  { id: 12, name: "Durango", x: 500, y: 400 },
-  { id: 13, name: "Torreon", x: 530, y: 390 },
-  { id: 14, name: "Coahuila Plains", x: 560, y: 370 },
-  { id: 15, name: "Casas Grandes (Paquimé)", x: 480, y: 360 },
-  { id: 16, name: "Ciudad Juarez", x: 470, y: 340 },
-  { id: 17, name: "Sonora Desert", x: 430, y: 350 },
-  { id: 18, name: "Hermosillo", x: 410, y: 380 },
-  { id: 19, name: "Guaymas & San Carlos", x: 400, y: 410 },
-  { id: 20, name: "Puerto Peñasco", x: 430, y: 330 },
-  { id: 21, name: "San Felipe", x: 390, y: 320 },
-  { id: 22, name: "Guadalupe Valley", x: 360, y: 310 },
-  { id: 23, name: "Guerrero Negro", x: 330, y: 360 },
-  { id: 24, name: "Rosarito", x: 350, y: 300 }
-];
+            <!-- 24 Checkpoints -->
+            <div class="checkpoint cp-1" onclick="clickLocation(1)"><img src="Icons/1.png" alt="1" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>1</span></div>
+            <div class="checkpoint cp-2" onclick="clickLocation(2)"><img src="Icons/2.png" alt="2" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>2</span></div>
+            <div class="checkpoint cp-3" onclick="clickLocation(3)"><img src="Icons/3.png" alt="3" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>3</span></div>
+            <div class="checkpoint cp-4" onclick="clickLocation(4)"><img src="Icons/4.png" alt="4" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>4</span></div>
+            <div class="checkpoint cp-5" onclick="clickLocation(5)"><img src="Icons/5.png" alt="5" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>5</span></div>
+            <div class="checkpoint cp-6" onclick="clickLocation(6)"><img src="Icons/6.png" alt="6" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>6</span></div>
+            <div class="checkpoint cp-7" onclick="clickLocation(7)"><img src="Icons/7.png" alt="7" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>7</span></div>
+            <div class="checkpoint cp-8" onclick="clickLocation(8)"><img src="Icons/8.png" alt="8" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>8</span></div>
+            <div class="checkpoint cp-9" onclick="clickLocation(9)"><img src="Icons/9.png" alt="9" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>9</span></div>
+            <div class="checkpoint cp-10" onclick="clickLocation(10)"><img src="Icons/10.png" alt="10" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>10</span></div>
+            <div class="checkpoint cp-11" onclick="clickLocation(11)"><img src="Icons/11.png" alt="11" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>11</span></div>
+            <div class="checkpoint cp-12" onclick="clickLocation(12)"><img src="Icons/12.png" alt="12" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>12</span></div>
+            <div class="checkpoint cp-13" onclick="clickLocation(13)"><img src="Icons/13.png" alt="13" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>13</span></div>
+            <div class="checkpoint cp-14" onclick="clickLocation(14)"><img src="Icons/14.png" alt="14" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>14</span></div>
+            <div class="checkpoint cp-15" onclick="clickLocation(15)"><img src="Icons/15.png" alt="15" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>15</span></div>
+            <div class="checkpoint cp-16" onclick="clickLocation(16)"><img src="Icons/16.png" alt="16" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>16</span></div>
+            <div class="checkpoint cp-17" onclick="clickLocation(17)"><img src="Icons/17.png" alt="17" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>17</span></div>
+            <div class="checkpoint cp-18" onclick="clickLocation(18)"><img src="Icons/18.png" alt="18" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>18</span></div>
+            <div class="checkpoint cp-19" onclick="clickLocation(19)"><img src="Icons/19.png" alt="19" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>19</span></div>
+            <div class="checkpoint cp-20" onclick="clickLocation(20)"><img src="Icons/20.png" alt="20" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>20</span></div>
+            <div class="checkpoint cp-21" onclick="clickLocation(21)"><img src="Icons/21.png" alt="21" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>21</span></div>
+            <div class="checkpoint cp-22" onclick="clickLocation(22)"><img src="Icons/22.png" alt="22" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>22</span></div>
+            <div class="checkpoint cp-23" onclick="clickLocation(23)"><img src="Icons/23.png" alt="23" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>23</span></div>
+            <div class="checkpoint cp-24" onclick="clickLocation(24)"><img src="Icons/24.png" alt="24" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span>24</span></div>
+        </div>
 
-const wrapper = document.getElementById("map-wrapper");
+        <!-- Right section: Info panel -->
+        <div class="info-section">
+            <div class="info-header">
+                <h2 id="info-title">Romantic Adventure!</h2>
+            </div>
+            <img id="info-img" class="info-img-large" src="Icons/1.png" alt="Location Icon" onerror="this.style.display='none';">
+            <div class="info-body">
+                <div id="info-content">
+                    <p>Welcome to your grand Mexico route adventure!</p>
+                </div>
+            </div>
+            <div id="info-action"></div>
+            <div class="info-footer">
+                Romantic Adventure • Mexico 2026
+            </div>
+        </div>
+    </div>
 
-/* Рендер точек */
-checkpoints.forEach(cp => {
-  const el = document.createElement("div");
-  el.className = "checkpoint";
-  el.textContent = cp.id;
-  el.style.left = cp.x + "px";
-  el.style.top = cp.y + "px";
-  el.dataset.id = cp.id;
-  wrapper.appendChild(el);
+    <script>
+        const locationsData = {
+            1: { 
+                title: "1. Mexico City (Zocalo)", 
+                history: "The historic heart of Mexico City, officially known as Plaza de la Constitución. For centuries, this grand public square served as the political and ceremonial center of the Aztec Empire—known then as Tenochtitlan—before evolving during the Spanish colonial era into the bustling epicenter of modern Mexico, surrounded by majestic architectural landmarks such as the Metropolitan Cathedral and the National Palace.", 
+                quest: "Find the hidden secret of the Zocalo square and unlock the path to the volcanoes!" 
+            },
+            2: { 
+                title: "2. Iztaccihuatl Volcano", 
+                history: "Standing at 5,230 meters, Iztaccihuatl is a dormant volcanic mountain whose name translates from Nahuatl as 'White Woman', vividly reflecting its snow-capped ridges that resemble a reclining female figure. Deeply rooted in indigenous mythology, it forms part of the majestic Sierra Nevada range guarding the Valley of Mexico.", 
+                quest: "Decode the legend of transmission and answer the mountain's riddle." 
+            },
+            3: { 
+                title: "3. Pico de Orizaba (My Natal Mountain)", 
+                history: "Rising to a breathtaking summit of 5,636 meters, Citlaltépetl or Pico de Orizaba is the highest peak in Mexico and the third highest in North America. Known historically as the 'Star Mountain', this massive stratovolcano holds deep personal and geographic significance as a legendary landmark of the Mexican landscape.", 
+                quest: "Share a cherished memory connected to your natal peak to conquer this height." 
+            },
+            4: { 
+                title: "4. El Mirador del Cuervo (Hidalgo)", 
+                history: "Nestled within the rugged pine forests and striking basalt prisms of Mineral del Chico National Park, El Mirador del Cuervo offers a dramatic vantage point over the misty mountain ranges of Hidalgo, reflecting the rich mining history and natural splendor of the region.", 
+                quest: "Breathe in the pine air and find the hidden viewpoint passphrase." 
+            },
+            5: { 
+                title: "5. Teotihuacan Pyramids", 
+                history: "An ancient Mesoamerican metropolis that flourished between the 1st and 7th centuries AD, Teotihuacan—the 'City of the Gods'—boasts some of the largest pyramidal structures built in the pre-Columbian Americas, including the towering Pyramids of the Sun and Moon connected by the sacred Avenue of the Dead.", 
+                quest: "Climb the symbolic steps of the Sun Pyramid and make a wish for the journey." 
+            },
+            6: { 
+                title: "6. San Miguel de Allende", 
+                history: "A renowned colonial-era city in Mexico's central highlands celebrated for its well-preserved Spanish baroque architecture, vibrant arts community, and the iconic pink stone neo-Gothic parish church of San Miguel Arcángel that dominates the historic cobblestone skyline.", 
+                quest: "Sketch a virtual postcard inspired by the colonial colors of the city." 
+            },
+            7: { 
+                title: "7. Guanajuato", 
+                history: "A picturesque city tucked into a narrow canyon, famous for its labyrinthine underground street network, colorful hillside houses cascading down steep slopes, and a dramatic history rooted in silver mining and the opening battles of the Mexican War of Independence.", 
+                quest: "Navigate through the labyrinth of underground alleyways to find the hidden key." 
+            },
+            8: { 
+                title: "8. Zacatecas", 
+                history: "Founded in 1546 following the discovery of monumental silver deposits, Zacatecas became one of the wealthiest colonial mining centers in the Spanish Empire. Its stunning pink quarry stone architecture and historic cable car spanning the urban gorge bear testament to its legendary mineral wealth.", 
+                quest: "Take the virtual cable car ride and uncover the silver mine secret." 
+            },
+            9: { 
+                title: "9. Guadalajara", 
+                history: "As the capital of Jalisco, Guadalajara is celebrated globally as the cultural powerhouse of traditional Mexican heritage, renowned as the undisputed birthplace of mariachi music, exquisite charreada traditions, and world-famous tequila culture.", 
+                quest: "Match the rhythm of a traditional mariachi melody." 
+            },
+            10: { 
+                title: "10. Tequila", 
+                history: "A designated Pueblo Mágico nestled in the volcanic shadow of the Tequila Volcano amid sweeping, UNESCO-protected blue agave fields. This historic town has spent centuries perfecting the art of distilling the iconic blue agave plant into Mexico's most famous spirit.", 
+                quest: "Harvest the digital blue agave leaf to brew success for the next leg." 
+            },
+            11: { 
+                title: "11. La Quemada Ruins", 
+                history: "Also known as Chicomoztoc, La Quemada is an extensive pre-Hispanic archaeological complex featuring dramatic stone-paved terraces, massive halls, and defensive fortifications perched high on a arid highland slope overlooking the valley.", 
+                quest: "Align the ancient stone pillars to reveal the archaeological code." 
+            },
+            12: { 
+                title: "12. Durango", 
+                history: "Officially Victoria de Durango, this northern city blends elegant 19th-century colonial architecture with dramatic desert landscapes that have made it the historic cinematic capital of Mexico, serving as the primary backdrop for countless classic Western films.", 
+                quest: "Direct a mini-scene for an old West cinematic showdown." 
+            },
+            13: { 
+                title: "13. Torreon", 
+                history: "A vital modern industrial hub of northern Mexico founded along historic railway junctions in the fertile Comarca Lagunera, proudly overseen from the heights of Cerro de las Noas by the iconic monumental statue of Christ.", 
+                quest: "Look out from the heights of the Noas monument and catch the northern signal." 
+            },
+            14: { 
+                title: "14. Coahuila Plains", 
+                history: "A vast, rugged, and historically significant expanse of the northern Mexican plateau characterized by expansive open horizons, desert ecosystems, and deep historical trails forged by early explorers and revolutionaries.", 
+                quest: "Chart a straight course across the open desert plain without losing direction." 
+            },
+            15: { 
+                title: "15. Casas Grandes (Paquime)", 
+                history: "Paquimé is a remarkable pre-Columbian archaeological zone celebrated for its unique multi-story adobe architecture, complex labyrinthine structures, and sophisticated ancient water distribution systems that reflect vibrant prehistoric trade networks.", 
+                quest: "Solve the multi-story adobe maze to exit into the northern plains." 
+            },
+            16: { 
+                title: "16. Ciudad Juarez", 
+                history: "A historic border crossroads stretching along the banks of the Rio Grande. Formerly known as Paso del Norte, it played a pivotal strategic role during the Mexican Revolution and serves as a dynamic meeting point of cultures.", 
+                quest: "Cross the historic border bridge by answering a question about revolutionary history." 
+            },
+            17: { 
+                title: "17. Sonora Desert", 
+                history: "One of the largest and hottest deserts in North America, featuring striking volcanic ranges, giant saguaro cacti forests, and ancient ancestral homelands rich in indigenous heritage and resilient desert life.", 
+                quest: "Survive the Sonoran heat challenge by finding the hidden oasis." 
+            },
+            18: { 
+                title: "18. Hermosillo", 
+                history: "The sun-drenched, vibrant capital of Sonora, combining historic colonial landmarks like the Cathedral of the Assumption with modern cultural districts, flourishing orange groves, and deep roots in northwestern history.", 
+                quest: "Find the sunniest spot in the capital and capture its warmth." 
+            },
+            19: { 
+                title: "19. Guaymas & San Carlos", 
+                history: "A stunning coastal twin destination where the craggy red volcanic peaks of the Sonoran desert dramatically plunge into the deep turquoise waters of the Sea of Cortez, creating world-famous marine sanctuaries.", 
+                quest: "Dive into the turquoise bay of San Carlos to retrieve a sea token." 
+            },
+            20: { 
+                title: "20. Puerto Peñasco", 
+                history: "A prominent modern seaside haven along the northern shores of the Gulf of California, historically known as Rocky Point, featuring vast tidal pools, volcanic formations, and pristine desert beaches.", 
+                quest: "Explore the tidal pools and collect three glowing shells." 
+            },
+            21: { 
+                title: "21. San Felipe", 
+                history: "A charming coastal fishing and resort town situated on the eastern shores of the Baja California peninsula, celebrated for its dramatic tidal ranges, rich marine life, and welcoming desert-seaside atmosphere.", 
+                quest: "Catch the golden fish of the gulf to earn passage to Baja peninsula." 
+            },
+            22: { 
+                title: "22. Guadalupe Valley", 
+                history: "Mexico's premier wine-making region, the Valle de Guadalupe features fertile Mediterranean microclimates, rolling hillside vineyards, and cutting-edge architectural wineries that produce world-class vintages.", 
+                quest: "Select the finest virtual vintage wine barrel to celebrate the peninsula arrival." 
+            },
+            23: { 
+                title: "23. Guerrero Negro, BCS", 
+                history: "Located on the border of Baja California Sur, this unique frontier town is world-renowned as the primary gateway to the Ojo de Liebre Lagoon—the protected winter sanctuary of the gray whale—surrounded by massive surreal white salt flats.", 
+                quest: "Spot a friendly gray whale breaching in the vast white salt flat lagoon." 
+            },
+            24: { 
+                title: "24. Rosarito (Finish)", 
+                history: "The ultimate Pacific coast destination famed for legendary ocean breezes, breathtaking golden sunsets, and a rich cinematic heritage that has welcomed travelers and filmmakers to its shores for decades.", 
+                quest: "Reach the Pacific shore, watch the ultimate sunset, and complete the great adventure!" 
+            }
+        };
 
-  let dragging = false;
+        // Reset progress completely
+        localStorage.removeItem('mexicoRouteProgress');
+        let currentStep = 1;
 
-  el.addEventListener("pointerdown", e => {
-    dragging = true;
-    el.setPointerCapture(e.pointerId);
-  });
+        function clickLocation(step) {
+            showLocationInfo(step);
+        }
 
-  el.addEventListener("pointermove", e => {
-    if (!dragging) return;
-    const rect = wrapper.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    el.style.left = x + "px";
-    el.style.top = y + "px";
-    const cpIndex = cp.id - 1;
-    checkpoints[cpIndex].x = Math.round(x);
-    checkpoints[cpIndex].y = Math.round(y);
-  });
+        function showLocationInfo(step) {
+            const data = locationsData[step];
+            if (!data) return;
 
-  el.addEventListener("pointerup", e => {
-    dragging = false;
-    el.releasePointerCapture(e.pointerId);
-  });
-});
+            document.getElementById('info-title').innerText = data.title;
+            
+            // Update large image
+            const infoImg = document.getElementById('info-img');
+            infoImg.style.display = 'block';
+            infoImg.src = `Icons/${step}.png`;
 
-/* Сохранение */
-document.getElementById("save-btn").onclick = () => {
-  const box = document.getElementById("save-box");
-  box.style.display = "block";
-  const json = JSON.stringify(checkpoints, null, 4);
-  box.textContent = json;
-  console.log("Новые координаты:", json);
-};
-</script>
+            let contentHTML = `<p>${data.history}</p>`;
+            let actionHTML = "";
 
+            if (step === currentStep && currentStep <= 24) {
+                actionHTML = `<button class="action-btn" onclick="startQuest(${step})">Начать задание ➔</button>`;
+            } else if (step < currentStep) {
+                actionHTML = `<button class="action-btn completed-status">✅ Этап пройден</button>`;
+            } else {
+                actionHTML = `<button class="action-btn locked-status">🔒 Этап заблокирован</button>`;
+            }
+
+            document.getElementById('info-content').innerHTML = contentHTML;
+            document.getElementById('info-action').innerHTML = actionHTML;
+        }
+
+        function startQuest(step) {
+            const data = locationsData[step];
+            if (!data) return;
+
+            // Display quest description in the info panel when button is clicked
+            let contentHTML = `<p>${data.history}</p>`;
+            contentHTML += `<div style="background: rgba(139, 0, 0, 0.1); border-left: 3px solid #8b0000; padding: 10px; margin-top: 10px; font-style: italic;"><strong>🎯 Задание:</strong><br>${data.quest}</div>`;
+            
+            let actionHTML = `<button class="action-btn" onclick="completeCurrentStep()">Выполнить задание и продвинуться ➔</button>`;
+
+            document.getElementById('info-content').innerHTML = contentHTML;
+            document.getElementById('info-action').innerHTML = actionHTML;
+        }
+
+        function completeCurrentStep() {
+            if (currentStep < 24) {
+                currentStep++;
+                localStorage.setItem('mexicoRouteProgress', currentStep);
+            } else {
+                alert("🎉 Поздравляем! Вы прошли весь маршрут до Росарито!");
+            }
+            updateMapDisplay();
+            showLocationInfo(currentStep);
+        }
+
+        function updateMapDisplay() {
+            const container = document.getElementById('mapContainer');
+            const rect = container.getBoundingClientRect();
+            
+            let allPoints = [];
+            
+            for (let i = 1; i <= 24; i++) {
+                const cp = container.querySelector(`.cp-${i}`);
+                if (cp) {
+                    const cpRect = cp.getBoundingClientRect();
+                    const x = (cpRect.left + cpRect.width / 2) - rect.left;
+                    const y = (cpRect.top + cpRect.height / 2) - rect.top;
+                    allPoints.push({ x, y });
+
+                    cp.classList.remove('locked');
+                    if (i > currentStep) {
+                        cp.classList.add('locked');
+                    }
+                }
+            }
+
+            let pendingStr = allPoints.map(p => `${p.x},${p.y}`).join(' ');
+            document.getElementById('routePending').setAttribute('points', pendingStr);
+
+            let completedPoints = allPoints.slice(0, currentStep);
+            let completedStr = completedPoints.map(p => `${p.x},${p.y}`).join(' ');
+            document.getElementById('routeCompleted').setAttribute('points', completedStr);
+        }
+
+        window.addEventListener('load', () => {
+            updateMapDisplay();
+            showLocationInfo(currentStep);
+        });
+        window.addEventListener('resize', updateMapDisplay);
+        setTimeout(updateMapDisplay, 100);
+    </script>
 </body>
 </html>
