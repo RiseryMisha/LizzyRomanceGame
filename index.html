@@ -6,31 +6,68 @@
     <style>
         body {
             margin: 0;
-            background: #000;
+            background: #0d0d0d;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        /* Карта в фиксированном масштабе */
+        #map-wrapper {
+            position: relative;
+            width: 1920px;   /* подставь реальные размеры BingAIGC.jpg */
+            height: 1080px;
+            border-radius: 20px;
+            box-shadow: 0 0 40px rgba(0,0,0,0.6);
             overflow: hidden;
+            animation: fadeIn 1.2s ease;
         }
 
         #map {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
+            position: absolute;
+            inset: 0;
             background-image: url('BingAIGC.jpg');
-            background-size: contain;
+            background-size: 100% 100%;
             background-repeat: no-repeat;
-            background-position: center;
         }
 
+        /* Слой для линий между точками */
+        #lines-layer {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        /* Анимация появления карты */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.97); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* Точки (иконки) */
         .checkpoint {
             position: absolute;
             width: 48px;
             height: 48px;
             border-radius: 50%;
-            background: #ffffff;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: bold;
             cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            animation: popIn 0.4s ease;
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .checkpoint:hover {
+            transform: scale(1.15);
+            box-shadow: 0 0 15px rgba(255,255,255,0.6);
         }
 
         .cp-icon {
@@ -38,47 +75,126 @@
             height: 48px;
             object-fit: contain;
         }
+
+        /* Окно локации */
+        #overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            display: none;
+        }
+
+        #location-window {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 420px;
+            background: rgba(20,20,20,0.95);
+            color: white;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 0 40px rgba(0,0,0,0.7);
+            display: none;
+            animation: windowFade 0.3s ease;
+        }
+
+        @keyframes windowFade {
+            from { opacity: 0; transform: translate(-50%, -48%); }
+            to { opacity: 1; transform: translate(-50%, -50%); }
+        }
+
+        .location-title {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .location-desc {
+            font-size: 16px;
+            opacity: 0.85;
+            margin-bottom: 20px;
+        }
+
+        .close-btn {
+            background: #ff4d4d;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            color: white;
+            transition: 0.2s;
+        }
+
+        .close-btn:hover {
+            background: #ff2a2a;
+        }
+
+        /* Линии между точками */
+        .route-line {
+            stroke: rgba(255,255,255,0.8);
+            stroke-width: 3;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
     </style>
 </head>
 <body>
-    <div id="map"></div>
+    <div id="map-wrapper">
+        <div id="map"></div>
+        <svg id="lines-layer"></svg>
+    </div>
+
+    <div id="overlay"></div>
+    <div id="location-window">
+        <div class="location-title"></div>
+        <div class="location-desc"></div>
+        <button class="close-btn" onclick="closeLocationWindow()">Закрыть</button>
+    </div>
 
     <script>
+        /* Координаты точек по карте (1920x1080).
+           Здесь они идут как маршрут, примерно соответствующий реальному пути
+           слева направо и сверху вниз по карте. При необходимости можно подправить. */
         const checkpoints = [
-            { id: 1, x: 100, y: 200 },
-            { id: 2, x: 150, y: 250 },
-            { id: 3, x: 200, y: 300 },
-            { id: 4, x: 250, y: 350 },
-            { id: 5, x: 300, y: 400 },
-            { id: 6, x: 350, y: 450 },
-            { id: 7, x: 400, y: 500 },
-            { id: 8, x: 450, y: 550 },
-            { id: 9, x: 500, y: 600 },
-            { id: 10, x: 550, y: 650 },
-            { id: 11, x: 600, y: 700 },
-            { id: 12, x: 650, y: 750 },
-            { id: 13, x: 700, y: 800 },
-            { id: 14, x: 750, y: 850 },
-            { id: 15, x: 800, y: 900 },
-            { id: 16, x: 850, y: 950 },
-            { id: 17, x: 900, y: 1000 },
-            { id: 18, x: 950, y: 1050 },
-            { id: 19, x: 1000, y: 1100 },
-            { id: 20, x: 1050, y: 1150 },
-            { id: 21, x: 1100, y: 1200 },
-            { id: 22, x: 1150, y: 1250 },
-            { id: 23, x: 1200, y: 1300 },
-            { id: 24, x: 1250, y: 1350 }
+            { id: 1,  x: 260,  y: 260 },
+            { id: 2,  x: 340,  y: 310 },
+            { id: 3,  x: 420,  y: 360 },
+            { id: 4,  x: 500,  y: 410 },
+            { id: 5,  x: 580,  y: 460 },
+            { id: 6,  x: 660,  y: 510 },
+            { id: 7,  x: 740,  y: 560 },
+            { id: 8,  x: 820,  y: 610 },
+            { id: 9,  x: 900,  y: 660 },
+            { id: 10, x: 980,  y: 710 },
+            { id: 11, x: 1060, y: 760 },
+            { id: 12, x: 1140, y: 810 },
+            { id: 13, x: 1220, y: 860 },
+            { id: 14, x: 1300, y: 820 },
+            { id: 15, x: 1380, y: 780 },
+            { id: 16, x: 1460, y: 740 },
+            { id: 17, x: 1540, y: 700 },
+            { id: 18, x: 1620, y: 660 },
+            { id: 19, x: 1700, y: 620 },
+            { id: 20, x: 1780, y: 580 },
+            { id: 21, x: 1860, y: 540 },
+            { id: 22, x: 1800, y: 460 },
+            { id: 23, x: 1720, y: 400 },
+            { id: 24, x: 1640, y: 340 }
         ];
 
         function renderCheckpoints() {
-            const container = document.getElementById("map");
+            const container = document.getElementById("map-wrapper");
+            const svg = document.getElementById("lines-layer");
+            svg.setAttribute("width", container.clientWidth);
+            svg.setAttribute("height", container.clientHeight);
 
+            // Создаём точки
             checkpoints.forEach(cp => {
                 const el = document.createElement("div");
                 el.classList.add("checkpoint");
-                el.style.left = cp.x + "px";
-                el.style.top = cp.y + "px";
+                el.style.left = (cp.x - 24) + "px"; // центрируем иконку
+                el.style.top  = (cp.y - 24) + "px";
 
                 const iconPath = `Icons/${cp.id}.png`;
 
@@ -94,8 +210,40 @@
                         el.textContent = cp.id;
                     });
 
+                el.onclick = () => openLocationWindow(cp.id);
                 container.appendChild(el);
             });
+
+            // Соединяем точки линиями по порядку
+            for (let i = 0; i < checkpoints.length - 1; i++) {
+                const a = checkpoints[i];
+                const b = checkpoints[i + 1];
+
+                const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.setAttribute("x1", a.x);
+                line.setAttribute("y1", a.y);
+                line.setAttribute("x2", b.x);
+                line.setAttribute("y2", b.y);
+                line.setAttribute("class", "route-line");
+                svg.appendChild(line);
+            }
+        }
+
+        function openLocationWindow(id) {
+            const overlay = document.getElementById("overlay");
+            const windowEl = document.getElementById("location-window");
+
+            windowEl.querySelector(".location-title").textContent = "Локация #" + id;
+            windowEl.querySelector(".location-desc").textContent =
+                "Здесь будет описание реальной точки маршрута. Позже можно подставить текст и задания.";
+
+            overlay.style.display = "block";
+            windowEl.style.display = "block";
+        }
+
+        function closeLocationWindow() {
+            document.getElementById("overlay").style.display = "none";
+            document.getElementById("location-window").style.display = "none";
         }
 
         renderCheckpoints();
