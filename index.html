@@ -14,16 +14,15 @@
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
-    /* Контейнер карты */
     #map-wrapper {
         position: relative;
-        width: 90vw; /* адаптивная ширина */
-        height: calc(90vw * 832 / 1248); /* сохраняем пропорции карты */
+        width: 90vw;
+        height: calc(90vw * 832 / 1248);
         max-height: 90vh;
+        max-width: calc(90vh * 1248 / 832);
         border-radius: 20px;
         box-shadow: 0 0 40px rgba(0,0,0,0.6);
         overflow: hidden;
-        animation: fadeIn 1.2s ease;
     }
 
     #map {
@@ -40,13 +39,210 @@
         pointer-events: none;
     }
 
-    @keyframes fadeIn {
-        from { opacity: 0; transform: scale(0.97); }
-        to { opacity: 1; transform: scale(1); }
-    }
-
     .checkpoint {
         position: absolute;
-        width: 3.8%;
-        height: 3.8%;
-        border-radius: 50%;
+        width: calc(48px * var(--scale));
+        height: calc(48px * var(--scale));
+        transform: translate(-50%, -50%);
+        cursor: pointer;
+        transition: 0.2s ease;
+    }
+
+    .checkpoint:hover {
+        transform: translate(-50%, -50%) scale(1.15);
+        box-shadow: 0 0 20px rgba(255,255,255,0.7);
+    }
+
+    .checkpoint.active {
+        box-shadow: 0 0 25px gold;
+        transform: translate(-50%, -50%) scale(1.2);
+    }
+
+    .checkpoint.passed {
+        filter: drop-shadow(0 0 10px #00e6c6);
+    }
+
+    .checkpoint.unpassed {
+        filter: drop-shadow(0 0 10px #ff4d4d);
+    }
+
+    .cp-icon {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+
+    .route-line {
+        stroke-width: calc(3px * var(--scale));
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-dasharray: 1000;
+        stroke-dashoffset: 1000;
+        animation: drawLine 2s ease forwards;
+    }
+
+    @keyframes drawLine {
+        to { stroke-dashoffset: 0; }
+    }
+
+    #overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.6);
+        display: none;
+    }
+
+    #location-window {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 420px;
+        background: rgba(20,20,20,0.95);
+        color: white;
+        padding: 25px;
+        border-radius: 16px;
+        box-shadow: 0 0 40px rgba(0,0,0,0.7);
+        display: none;
+    }
+
+    .location-title {
+        font-size: 22px;
+        margin-bottom: 10px;
+    }
+
+    .location-desc {
+        font-size: 15px;
+        opacity: 0.85;
+        margin-bottom: 20px;
+    }
+
+    .close-btn {
+        background: #ff4d4d;
+        border: none;
+        padding: 10px 18px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 15px;
+        color: white;
+    }
+</style>
+</head>
+<body>
+
+<div id="map-wrapper">
+    <div id="map"></div>
+    <svg id="lines-layer"></svg>
+</div>
+
+<div id="overlay"></div>
+<div id="location-window">
+    <div class="location-title"></div>
+    <div class="location-desc"></div>
+    <button class="close-btn" onclick="closeLocationWindow()">Закрыть</button>
+</div>
+
+<script>
+/* Прогресс маршрута */
+let progress = 0; // сколько точек пройдено (0–24)
+
+/* Координаты */
+const checkpoints = [
+    { id: 1,  name: "Mexico City (Zócalo)",          x: 650, y: 520 },
+    { id: 2,  name: "Iztaccihuatl Volcano",          x: 670, y: 500 },
+    { id: 3,  name: "Pico de Orizaba",               x: 750, y: 500 },
+    { id: 4,  name: "El Mirador del Cuervo (Hidalgo)", x: 650, y: 480 },
+    { id: 5,  name: "Teotihuacan Pyramids",          x: 680, y: 480 },
+    { id: 6,  name: "San Miguel de Allende",         x: 600, y: 470 },
+    { id: 7,  name: "Guanajuato",                    x: 590, y: 460 },
+    { id: 8,  name: "Zacatecas",                     x: 540, y: 430 },
+    { id: 9,  name: "Guadalajara",                   x: 520, y: 500 },
+    { id: 10, name: "Tequila",                       x: 510, y: 490 },
+    { id: 11, name: "La Quemada Ruins",              x: 540, y: 440 },
+    { id: 12, name: "Durango",                       x: 500, y: 400 },
+    { id: 13, name: "Torreon",                       x: 530, y: 390 },
+    { id: 14, name: "Coahuila Plains",               x: 560, y: 370 },
+    { id: 15, name: "Casas Grandes (Paquimé)",       x: 480, y: 360 },
+    { id: 16, name: "Ciudad Juarez",                 x: 470, y: 340 },
+    { id: 17, name: "Sonora Desert",                 x: 430, y: 350 },
+    { id: 18, name: "Hermosillo",                    x: 410, y: 380 },
+    { id: 19, name: "Guaymas & San Carlos",          x: 400, y: 410 },
+    { id: 20, name: "Puerto Peñasco",                x: 430, y: 330 },
+    { id: 21, name: "San Felipe",                    x: 390, y: 320 },
+    { id: 22, name: "Guadalupe Valley",              x: 360, y: 310 },
+    { id: 23, name: "Guerrero Negro",                x: 330, y: 360 },
+    { id: 24, name: "Rosarito",                      x: 350, y: 300 }
+];
+
+function renderCheckpoints() {
+    const wrapper = document.getElementById("map-wrapper");
+    const svg = document.getElementById("lines-layer");
+
+    const scale = wrapper.clientWidth / 1248;
+    document.documentElement.style.setProperty("--scale", scale);
+
+    svg.setAttribute("width", wrapper.clientWidth);
+    svg.setAttribute("height", wrapper.clientHeight);
+
+    checkpoints.forEach((cp, index) => {
+        const el = document.createElement("div");
+        el.classList.add("checkpoint");
+
+        const px = cp.x * scale;
+        const py = cp.y * scale;
+
+        el.style.left = px + "px";
+        el.style.top  = py + "px";
+
+        const iconPath = `Icons/${cp.id}.png`;
+        el.innerHTML = `<img src="${iconPath}" class="cp-icon">`;
+
+        if (index < progress) el.classList.add("passed");
+        else el.classList.add("unpassed");
+
+        if (index === progress) el.classList.add("active");
+
+        el.onclick = () => openLocationWindow(cp);
+        wrapper.appendChild(el);
+    });
+
+    for (let i = 0; i < checkpoints.length - 1; i++) {
+        const a = checkpoints[i];
+        const b = checkpoints[i + 1];
+
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", a.x * scale);
+        line.setAttribute("y1", a.y * scale);
+        line.setAttribute("x2", b.x * scale);
+        line.setAttribute("y2", b.y * scale);
+
+        if (i < progress - 1) {
+            line.style.stroke = "#00e6c6"; // пройдено
+        } else {
+            line.style.stroke = "#ff4d4d"; // не пройдено
+        }
+
+        line.setAttribute("class", "route-line");
+        svg.appendChild(line);
+    }
+}
+
+function openLocationWindow(cp) {
+    document.getElementById("overlay").style.display = "block";
+    const win = document.getElementById("location-window");
+    win.querySelector(".location-title").textContent = cp.name;
+    win.querySelector(".location-desc").textContent =
+        "Маршрутная точка #" + cp.id + ". Здесь можно добавить описание, события и задания.";
+    win.style.display = "block";
+}
+
+function closeLocationWindow() {
+    document.getElementById("overlay").style.display = "none";
+    document.getElementById("location-window").style.display = "none";
+}
+
+renderCheckpoints();
+</script>
+
+</body>
+</html>
