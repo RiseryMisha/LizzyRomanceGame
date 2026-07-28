@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Romantic Adventure - Mexico Route</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #2b1810;
+            font-family: 'Georgia', serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Main layout container */
+        .game-layout {
+            display: flex;
+            width: 95vw;
+            height: 90vh;
+            max-width: 1600px;
+            background: #1a0f0a;
+            border: 6px solid #d4af37;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+            overflow: hidden;
+        }
+
+        /* Left section: Map (75%) */
+        .map-section {
+            position: relative;
+            width: 75%;
+            height: 100%;
+            background: #000;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .map-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* SVG layer for route lines */
+        .route-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* Unvisited path (red dashed) */
+        .route-line-pending {
+            fill: none;
+            stroke: #ff3333;
+            stroke-width: 3;
+            stroke-dasharray: 6, 6;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            filter: drop-shadow(0 0 4px #ff0000);
+        }
+
+        /* Completed path (blue solid) */
+        .route-line-completed {
+            fill: none;
+            stroke: #00bfff;
+            stroke-width: 4;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            filter: drop-shadow(0 0 6px #00bfff);
+        }
+
+        /* Right section: Info panel (25%) */
+        .info-section {
+            width: 25%;
+            height: 100%;
+            background: #f4e8c1;
+            background-image: linear-gradient(to bottom, #fdf6e2, #e6d2a5);
+            border-left: 4px solid #b8860b;
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            color: #2b1810;
+            box-shadow: inset 10px 0 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .info-header h2 {
+            font-size: 20px;
+            color: #8b0000;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #d4af37;
+            padding-bottom: 8px;
+            text-align: center;
+        }
+
+        .info-body {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #3b2219;
+            overflow-y: auto;
+            max-height: calc(90vh - 280px);
+            padding-right: 5px;
+        }
+
+        .info-body p {
+            margin-bottom: 15px;
+        }
+
+        .quest-box {
+            background: rgba(139, 0, 0, 0.1);
+            border-left: 3px solid #8b0000;
+            padding: 10px;
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        .complete-btn {
+            display: block;
+            width: 100%;
+            background: #8b0000;
+            color: #fff;
+            border: none;
+            padding: 12px;
+            font-size: 15px;
+            font-family: 'Georgia', serif;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .complete-btn:hover {
+            background: #a00000;
+            transform: scale(1.02);
+        }
+
+        /* Edit Mode Control Panel Button */
+        .edit-mode-btn {
+            display: block;
+            width: 100%;
+            background: #2b1810;
+            color: #d4af37;
+            border: 2px solid #d4af37;
+            padding: 10px;
+            font-size: 13px;
+            font-family: 'Georgia', serif;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.2s;
+        }
+
+        .edit-mode-btn:hover {
+            background: #3b2219;
+            color: #fff;
+        }
+
+        .edit-mode-btn.active {
+            background: #00bfff;
+            color: #000;
+            border-color: #000;
+        }
+
+        .info-footer {
+            text-align: center;
+            font-size: 13px;
+            color: #705335;
+            font-style: italic;
+            border-top: 1px solid #d4af37;
+            padding-top: 10px;
+        }
+
+        /* Styles for standard checkpoints */
+        .checkpoint {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: #ffcc00;
+            border: 3px solid #fff;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.8), 0 0 15px #ffcc00;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .checkpoint span {
+            font-size: 12px;
+            font-weight: bold;
+            color: #2b1810;
+        }
+
+        /* Custom icon styles for transparent PNG */
+        .checkpoint.custom-icon {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            width: 55px;
+            height: 55px;
+        }
+
+        .checkpoint.custom-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.7));
+            transition: transform 0.3s ease;
+        }
+
+        .checkpoint.custom-icon:not(.locked):hover {
+            transform: translate(-50%, -50%) scale(1.25);
+            z-index: 20;
+        }
+
+        .checkpoint.custom-icon.active img {
+            filter: drop-shadow(0 0 8px #ff3333) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.7));
+        }
+
+        .checkpoint.custom-icon.visited img {
+            filter: drop-shadow(0 0 6px #00bfff) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.7));
+        }
+
+        /* Visited checkpoints style (for standard numbers) */
+        .checkpoint.visited {
+            border-color: #00bfff;
+            background: #e0f7ff;
+            box-shadow: 0 0 12px #00bfff, 0 0 20px #00bfff;
+        }
+
+        /* Current active quest checkpoint style */
+        .checkpoint.active {
+            border-color: #ff3333;
+            background: #ffcccc;
+            animation: pulse 1.5s infinite;
+        }
+
+        /* Locked future checkpoints style */
+        .checkpoint.locked {
+            opacity: 0.6;
+            cursor: not-allowed;
+            filter: grayscale(50%);
+        }
+
+        /* Edit mode visual cues */
+        .map-section.editing .checkpoint {
+            cursor: move !important;
+            border: 2px dashed #00ff00 !important;
+            animation: none !important;
+            opacity: 1 !important;
+            filter: none !important;
+            z-index: 100;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 10px #ff0000, 0 0 15px #ff3333; }
+            50% { box-shadow: 0 0 20px #ff0000, 0 0 35px #ffff00; }
+            100% { box-shadow: 0 0 10px #ff0000, 0 0 15px #ff3333; }
+        }
+
+        .checkpoint:not(.custom-icon):not(.locked):hover {
+            transform: translate(-50%, -50%) scale(1.35);
+            z-index: 20;
+        }
+
+        /* Coordinates for 24 checkpoints */
+        .cp-1  { top: 76.5%; left: 63.2%; }
+        .cp-2  { top: 80.5%; left: 66.5%; }
+        .cp-3  { top: 83.0%; left: 74.0%; }
+        .cp-4  { top: 71.0%; left: 66.5%; }
+        .cp-5  { top: 71.5%; left: 61.5%; }
+        .cp-6  { top: 68.7%; left: 59.9%; }
+        .cp-7  { top: 68.0%; left: 53.3%; }
+        .cp-8  { top: 60.5%; left: 50.8%; }
+        .cp-9  { top: 69.3%; left: 44.7%; }
+        .cp-10 { top: 64.3%; left: 42.7%; }
+        .cp-11 { top: 55.1%; left: 44.2%; }
+        .cp-12 { top: 47.4%; left: 39.5%; }
+        .cp-13 { top: 36.6%; left: 45.9%; }
+        .cp-14 { top: 29.6%; left: 53.9%; }
+        .cp-15 { top: 16.7%; left: 46.4%; }
+        .cp-16 { top: 4.1%;  left: 53.3%; }
+        .cp-17 { top: 14.7%; left: 28.1%; }
+        .cp-18 { top: 29.7%; left: 28.7%; }
+        .cp-19 { top: 41.2%; left: 27.3%; }
+        .cp-20 { top: 16.4%; left: 16.7%; }
+        .cp-21 { top: 15.3%; left: 8.3%;  }
+        .cp-22 { top: 23.0%; left: 9.4%;  }
+        .cp-23 { top: 28.0%; left: 20.0%; }
+        .cp-24 { top: 8.2%;  left: 6.4%;  }
+    </style>
+</head>
+<body>
+
+    <div class="game-layout">
+        <!-- Left section: Map -->
+        <div class="map-section" id="mapContainer">
+            <img src="BingAIGC.jpg" alt="Map of Mexico" class="map-image" id="mapImg">
+
+            <!-- SVG layer for route lines -->
+            <svg class="route-svg">
+                <polyline id="routePending" class="route-line-pending" points="" />
+                <polyline id="routeCompleted" class="route-line-completed" points="" />
+            </svg>
+
+            <!-- 24 Checkpoints -->
+            <div class="checkpoint cp-1 custom-icon" onclick="clickLocation(1)" data-id="1"><img src="Icons/OIG1.png" alt="1"></div>
+            <div class="checkpoint cp-2" onclick="clickLocation(2)" data-id="2"><span>2</span></div>
+            <div class="checkpoint cp-3" onclick="clickLocation(3)" data-id="3"><span>3</span></div>
+            <div class="checkpoint cp-4" onclick="clickLocation(4)" data-id="4"><span>4</span></div>
+            <div class="checkpoint cp-5" onclick="clickLocation(5)" data-id="5"><span>5</span></div>
+            <div class="checkpoint cp-6" onclick="clickLocation(6)" data-id="6"><span>6</span></div>
+            <div class="checkpoint cp-7" onclick="clickLocation(7)" data-id="7"><span>7</span></div>
+            <div class="checkpoint cp-8" onclick="clickLocation(8)" data-id="8"><span>8</span></div>
+            <div class="checkpoint cp-9" onclick="clickLocation(9)" data-id="9"><span>9</span></div>
+            <div class="checkpoint cp-10" onclick="clickLocation(10)" data-id="10"><span>10</span></div>
+            <div class="checkpoint cp-11" onclick="clickLocation(11)" data-id="11"><span>11</span></div>
+            <div class="checkpoint cp-12" onclick="clickLocation(12)" data-id="12"><span>12</span></div>
+            <div class="checkpoint cp-13" onclick="clickLocation(13)" data-id="13"><span>13</span></div>
+            <div class="checkpoint cp-14" onclick="clickLocation(14)" data-id="14"><span>14</span></div>
+            <div class="checkpoint cp-15" onclick="clickLocation(15)" data-id="15"><span>15</span></div>
+            <div class="checkpoint cp-16" onclick="clickLocation(16)" data-id="16"><span>16</span></div>
+            <div class="checkpoint cp-17" onclick="clickLocation(17)" data-id="17"><span>17</span></div>
+            <div class="checkpoint cp-18" onclick="clickLocation(18)" data-id="18"><span>18</span></div>
+            <div class="checkpoint cp-19" onclick="clickLocation(19)" data-id="19"><span>19</span></div>
+            <div class="checkpoint cp-20" onclick="clickLocation(20)" data-id="20"><span>20</span></div>
+            <div class="checkpoint cp-21" onclick="clickLocation(21)" data-id="21"><span>21</span></div>
+            <div class="checkpoint cp-22" onclick="clickLocation(22)" data-id="22"><span>22</span></div>
+            <div class="checkpoint cp-23" onclick="clickLocation(23)" data-id="23"><span>23</span></div>
+            <div class="checkpoint cp-24" onclick="clickLocation(24)" data-id="24"><span>24</span></div>
+        </div>
+
+        <!-- Right section: Info panel -->
+        <div class="info-section">
+            <div class="info-header">
+                <h2 id="info-title">Romantic Adventure!</h2>
+            </div>
+            <div class="info-body">
+                <div id="info-content">
+                    <p>Welcome to your grand Mexico route adventure!</p>
+                </div>
+            </div>
+            <div>
+                <div id="info-action"></div>
+                <button class="edit-mode-btn" id="editModeBtn" onclick="toggleEditMode()">🔧 Режим настройки точек</button>
+            </div>
+            <div class="info-footer">
+                Romantic Adventure • Mexico 2026
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const locationsData = {
+            1: { title: "1. Mexico City (Zocalo)", text: "A grand start in the historic center, built over the ruins of the Aztec city of Tenochtitlan.", quest: "Find the hidden secret of the Zocalo square and unlock the path to the volcanoes!" },
+            2: { title: "2. Iztaccihuatl Volcano", text: "The iconic 'Sleeping Woman' volcano standing proudly near the Valley of Mexico.", quest: "Decode the legend of transmission and answer the mountain's riddle." },
+            3: { title: "3. Pico de Orizaba (My Natal Mountain)", text: "Your majestic natal mountain, the highest peak in Mexico and a magnificent stratovolcano.", quest: "Share a cherished memory connected to your natal peak to conquer this height." },
+            4: { title: "4. El Mirador del Cuervo (Hidalgo)", text: "A breathtaking scenic viewpoint in Mineral del Chico national park surrounded by mystic pine forests.", quest: "Breathe in the pine air and find the hidden viewpoint passphrase." },
+            5: { title: "5. Teotihuacan Pyramids", text: "The majestic 'City of the Gods' featuring monumental Pyramids of the Sun and Moon.", quest: "Climb the symbolic steps of the Sun Pyramid and make a wish for the journey." },
+            6: { title: "6. San Miguel de Allende", text: "A picturesque colonial art town famous for its iconic pink gothic-style parish church.", quest: "Sketch a virtual postcard inspired by the colonial colors of the city." },
+            7: { title: "7. Guanajuato", text: "A vibrant canyon jewel known for its historic mines, colorful hillside houses, and underground streets.", quest: "Navigate through the labyrinth of underground alleyways to find the hidden key." },
+            8: { title: "8. Zacatecas", text: "A UNESCO-listed silver mining historic center featuring a thrilling cable car ride across the city.", quest: "Take the virtual cable car ride and uncover the silver mine secret." },
+            9: { title: "9. Guadalajara", text: "The cultural heart of Mexico, celebrated as the birthplace of mariachi music and tequila.", quest: "Match the rhythm of a traditional mariachi melody." },
+            10: { title: "10. Tequila", text: "An authentic town nestled among endless blue agave fields where the famous spirit originates.", quest: "Harvest the digital blue agave leaf to brew success for the next leg." },
+            11: { title: "11. La Quemada Ruins", text: "An ancient pre-Hispanic archaeological highland complex featuring monumental stone terraces.", quest: "Align the ancient stone pillars to reveal the archaeological code." },
+            12: { title: "12. Durango", text: "The cinematic heart of Mexico blending old West colonial charm with dramatic desert landscapes.", quest: "Direct a mini-scene for an old West cinematic showdown." },
+            13: { title: "13. Torreon", text: "A major modern industrial hub of the north dominated by the towering Christ of the Noas monument.", quest: "Look out from the heights of the Noas monument and catch the northern signal." },
+            14: { title: "14. Coahuila Plains", text: "A scenic journey across the rugged and expansive open horizons of the northern Mexican plateau.", quest: "Chart a straight course across the open desert plain without losing direction." },
+            15: { title: "15. Casas Grandes (Paquime)", text: "A unique pre-Columbian archaeological site featuring multi-story adobe maze structures.", quest: "Solve the multi-story adobe maze to exit into the northern plains." },
+            16: { title: "16. Ciudad Juarez", text: "A historic border crossroads situated along the Rio Grande with a rich revolutionary heritage.", quest: "Cross the historic border bridge by answering a question about revolutionary history." },
+            17: { title: "17. Sonora Desert", text: "Striking Martian volcanic landscapes and sacred ancestral lands of northern indigenous peoples.", quest: "Survive the Sonoran heat challenge by finding the hidden oasis." },
+            18: { title: "18. Hermosillo", text: "A dynamic and sun-drenched capital of Sonora combining historic cathedrals with modern districts.", quest: "Find the sunniest spot in the capital and capture its warmth." },
+            19: { title: "19. Guaymas & San Carlos", text: "A breathtaking coastal escape where the rugged Sonoran desert meets turquoise sea waters.", quest: "Dive into the turquoise bay of San Carlos to retrieve a sea token." },
+            20: { title: "20. Puerto Peñasco", text: "A popular modern seaside resort destination featuring volcanic tidal pools and vast sandy beaches.", quest: "Explore the tidal pools and collect three glowing shells." },
+            21: { title: "21. San Felipe", text: "A cozy and charming fishing town located on the eastern coast of the Baja California peninsula.", quest: "Catch the golden fish of the gulf to earn passage to Baja peninsula." },
+            22: { title: "22. Guadalupe Valley", text: "Mexico's premier wine-making region featuring cutting-edge architecture and scenic hillside vineyards.", quest: "Select the finest virtual vintage wine barrel to celebrate the peninsula arrival." },
+            23: { title: "23. Guerrero Negro, BCS", text: "Famous gateway to the Ojo de Liebre gray whale sanctuary, massive surreal white salt flats, and unique coastal-desert ecosystems.", quest: "Spot a friendly gray whale breaching in the vast white salt flat lagoon." },
+            24: { title: "24. Rosarito (Finish)", text: "The grand finale on the Pacific coast: ocean breeze, breathtaking sunsets, and cinematic history.", quest: "Reach the Pacific shore, watch the ultimate sunset, and complete the great adventure!" }
+        };
+
+        let currentStep = parseInt(localStorage.getItem('mexicoRouteProgress')) || 1;
+        let isEditMode = false;
+        let activeDragCheckpoint = null;
+
+        // Загрузка сохраненных в браузере кастомных координат, если они есть
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedCoords = JSON.parse(localStorage.getItem('mexicoCustomCoords') || '{}');
+            for (let i = 1; i <= 24; i++) {
+                if (savedCoords[i]) {
+                    const cp = document.querySelector(`.cp-${i}`);
+                    if (cp) {
+                        cp.style.top = savedCoords[i].top;
+                        cp.style.left = savedCoords[i].left;
+                    }
+                }
+            }
+            updateMapDisplay();
+            showLocationInfo(currentStep);
+        });
+
+        function clickLocation(step) {
+            if (isEditMode) return; // В режиме редактирования клик не открывает квест
+            if (step > currentStep) {
+                alert("🔒 This stage is locked! Complete the current quest first.");
+                return;
+            }
+            showLocationInfo(step);
+        }
+
+        function showLocationInfo(step) {
+            if (isEditMode) return;
+            const data = locationsData[step];
+            if (!data) return;
+
+            document.getElementById('info-title').innerText = data.title;
+            
+            let contentHTML = `<p>${data.text}</p>`;
+            let actionHTML = "";
+
+            if (step === currentStep && currentStep <= 24) {
+                contentHTML += `<div class="quest-box"><strong>🎯 Current Quest:</strong><br>${data.quest}</div>`;
+                actionHTML = `<button class="complete-btn" onclick="completeCurrentStep()">Complete Quest & Advance ➔</button>`;
+            } else {
+                contentHTML += `<div class="quest-box" style="border-color: #00bfff; background: rgba(0,191,255,0.1);"><strong>✅ Completed Stage</strong></div>`;
+            }
+
+            document.getElementById('info-content').innerHTML = contentHTML;
+            document.getElementById('info-action').innerHTML = actionHTML;
+        }
+
+        function completeCurrentStep() {
+            if (currentStep < 24) {
+                currentStep++;
+                localStorage.setItem('mexicoRouteProgress', currentStep);
+            } else {
+                alert("🎉 Congratulations! You have completed the entire route to Rosarito!");
+            }
+            updateMapDisplay();
+            showLocationInfo(currentStep);
+        }
+
+        // Логика режима редактирования и перетаскивания точек
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            const mapSection = document.getElementById('mapContainer');
+            const btn = document.getElementById('editModeBtn');
+
+            if (isEditMode) {
+                mapSection.classList.add('editing');
+                btn.classList.add('active');
+                btn.innerText = "💾 Сохранить координаты точек";
+                document.getElementById('info-title').innerText = "Режим настройки";
+                document.getElementById('info-content').innerHTML = `<p>Перетаскивайте точки мышкой в нужные места карты.</p><p>Когда закончите, нажмите кнопку сохранения под панелью.</p>`;
+                document.getElementById('info-action').innerHTML = "";
+            } else {
+                mapSection.classList.remove('editing');
+                btn.classList.remove('active');
+                btn.innerText = "🔧 Режим настройки точек";
+                
+                // Сохранение в localStorage
+                saveCustomCoordinates();
+                showLocationInfo(currentStep);
+            }
+            updateMapDisplay();
+        }
+
+        function saveCustomCoordinates() {
+            const coords = {};
+            for (let i = 1; i <= 24; i++) {
+                const cp = document.querySelector(`.cp-${i}`);
+                if (cp) {
+                    coords[i] = {
+                        top: cp.style.top,
+                        left: cp.style.left
+                    };
+                }
+            }
+            localStorage.setItem('mexicoCustomCoords', JSON.stringify(coords));
+            
+            // Также выведем в консоль для удобства переноса в CSS
+            let cssOutput = "";
+            for (let i = 1; i <= 24; i++) {
+                const cp = document.querySelector(`.cp-${i}`);
+                cssOutput += `.cp-${i.toString().padEnd(2, ' ')} { top: ${cp.style.top}; left: ${cp.style.left}; }\n`;
+            }
+            console.log("=== CSS Координаты точек ===");
+            console.log(cssOutput);
+            alert("Координаты успешно сохранены в памяти браузера!");
+        }
+
+        // Drag & Drop слушатели
+        const mapContainer = document.getElementById('mapContainer');
+
+        mapContainer.addEventListener('mousedown', (e) => {
+            if (!isEditMode) return;
+            const cp = e.target.closest('.checkpoint');
+            if (cp) {
+                activeDragCheckpoint = cp;
+                e.preventDefault();
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isEditMode || !activeDragCheckpoint) return;
+            
+            const rect = mapContainer.getBoundingClientRect();
+            let x = e.clientX - rect.left;
+            let y = e.clientY - rect.top;
+
+            // Ограничения в процентах внутри контейнера карты
+            let leftPercent = (x / rect.width) * 100;
+            let topPercent = (y / rect.height) * 100;
+
+            leftPercent = Math.max(0, Math.min(100, leftPercent));
+            topPercent = Math.max(0, Math.min(100, topPercent));
+
+            activeDragCheckpoint.style.left = leftPercent.toFixed(1) + '%';
+            activeDragCheckpoint.style.top = topPercent.toFixed(1) + '%';
+
+            updateMapDisplay();
+        });
+
+        window.addEventListener('mouseup', () => {
+            activeDragCheckpoint = null;
+        });
+
+        function updateMapDisplay() {
+            const container = document.getElementById('mapContainer');
+            const rect = container.getBoundingClientRect();
+            
+            let allPoints = [];
+            
+            for (let i = 1; i <= 24; i++) {
+                const cp = container.querySelector(`.cp-${i}`);
+                if (cp) {
+                    const cpRect = cp.getBoundingClientRect();
+                    const x = (cpRect.left + cpRect.width / 2) - rect.left;
+                    const y = (cpRect.top + cpRect.height / 2) - rect.top;
+                    allPoints.push({ x, y });
+
+                    if (!isEditMode) {
+                        cp.classList.remove('visited', 'active', 'locked');
+
+                        if (i < currentStep) {
+                            cp.classList.add('visited');
+                        } else if (i === currentStep) {
+                            cp.classList.add('active');
+                        } else {
+                            cp.classList.add('locked');
+                        }
+                    }
+                }
+            }
+
+            let pendingStr = allPoints.map(p => `${p.x},${p.y}`).join(' ');
+            let completedLimit = isEditMode ? 24 : currentStep;
+            let completedPoints = allPoints.slice(0, completedLimit);
+            let completedStr = completedPoints.map(p => `${p.x},${p.y}`).join(' ');
+
+            document.getElementById('routePending').setAttribute('points', pendingStr);
+            document.getElementById('routeCompleted').setAttribute('points', completedStr);
+        }
+
+        window.addEventListener('load', () => {
+            updateMapDisplay();
+            showLocationInfo(currentStep);
+        });
+        window.addEventListener('resize', updateMapDisplay);
+        setTimeout(updateMapDisplay, 100);
+    </script>
+</body>
+</html>
