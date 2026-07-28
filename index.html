@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Mexico Route Map</title>
+<title>Mexico Route Editor</title>
 
 <style>
     body {
@@ -15,7 +15,6 @@
         font-family: Arial, sans-serif;
     }
 
-    /* Адаптивная карта */
     #map-wrapper {
         position: relative;
         width: 90vw;
@@ -25,6 +24,7 @@
         border-radius: 20px;
         overflow: hidden;
         box-shadow: 0 0 40px rgba(0,0,0,0.6);
+        background: black;
     }
 
     #map {
@@ -35,69 +35,53 @@
         background-repeat: no-repeat;
     }
 
-    #lines-layer {
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-    }
-
-    /* Точки */
     .checkpoint {
         position: absolute;
-        transform: translate(-50%, -50%);
-        cursor: pointer;
-        width: calc(48px * var(--scale));
-        height: calc(48px * var(--scale));
+        width: 32px;
+        height: 32px;
         border-radius: 50%;
+        background: rgba(255,255,255,0.2);
+        border: 2px solid #fff;
+        color: white;
+        font-size: 14px;
+        font-weight: bold;
         display: flex;
         justify-content: center;
         align-items: center;
-        font-weight: bold;
+        cursor: grab;
+        transform: translate(-50%, -50%);
+        user-select: none;
+    }
+
+    .checkpoint:active {
+        cursor: grabbing;
+    }
+
+    #save-box {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        background: rgba(20,20,20,0.9);
+        padding: 15px;
+        border-radius: 10px;
         color: white;
-        background: rgba(255,255,255,0.15);
-        border: 2px solid transparent;
-        transition: 0.2s;
+        width: 400px;
+        font-size: 14px;
+        display: none;
     }
 
-    .checkpoint:hover {
-        transform: translate(-50%, -50%) scale(1.15);
-        box-shadow: 0 0 20px rgba(255,255,255,0.7);
-    }
-
-    .checkpoint.active {
-        border-color: gold;
-        box-shadow: 0 0 25px gold;
-        background: rgba(255,215,0,0.3);
-    }
-
-    .checkpoint.passed {
-        border-color: #00e6c6;
-        background: rgba(0,230,198,0.3);
-    }
-
-    .checkpoint.unpassed {
-        border-color: #ff4d4d;
-        background: rgba(255,77,77,0.3);
-    }
-
-    .cp-icon {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-    }
-
-    /* Линии маршрута */
-    .route-line {
-        stroke-width: calc(3px * var(--scale));
-        stroke-linecap: round;
-        stroke-linejoin: round;
-        stroke-dasharray: 1000;
-        stroke-dashoffset: 1000;
-        animation: drawLine 2s ease forwards;
-    }
-
-    @keyframes drawLine {
-        to { stroke-dashoffset: 0; }
+    #save-btn {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: #00e6c6;
+        color: black;
+        padding: 12px 20px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: bold;
+        border: none;
+        font-size: 16px;
     }
 </style>
 </head>
@@ -105,15 +89,15 @@
 
 <div id="map-wrapper">
     <div id="map"></div>
-    <svg id="lines-layer"></svg>
 </div>
 
-<script>
-/* Прогресс маршрута */
-let progress = 0; // 0–24
+<button id="save-btn">Сохранить координаты</button>
 
-/* Координаты точек на карте 1248x832 */
-const checkpoints = [
+<div id="save-box"></div>
+
+<script>
+/* Исходные координаты */
+let checkpoints = [
     { id: 1,  name: "Mexico City (Zócalo)",          x: 650, y: 520 },
     { id: 2,  name: "Iztaccihuatl Volcano",          x: 670, y: 500 },
     { id: 3,  name: "Pico de Orizaba",               x: 750, y: 500 },
@@ -140,66 +124,52 @@ const checkpoints = [
     { id: 24, name: "Rosarito",                      x: 350, y: 300 }
 ];
 
-function renderMap() {
-    const wrapper = document.getElementById("map-wrapper");
-    const svg = document.getElementById("lines-layer");
+const wrapper = document.getElementById("map-wrapper");
 
-    const scale = wrapper.clientWidth / 1248;
-    document.documentElement.style.setProperty("--scale", scale);
+/* Рендер точек */
+checkpoints.forEach(cp => {
+    const el = document.createElement("div");
+    el.className = "checkpoint";
+    el.textContent = cp.id;
 
-    svg.setAttribute("width", wrapper.clientWidth);
-    svg.setAttribute("height", wrapper.clientHeight);
+    el.style.left = cp.x + "px";
+    el.style.top  = cp.y + "px";
 
-    checkpoints.forEach((cp, index) => {
-        const el = document.createElement("div");
-        el.classList.add("checkpoint");
+    el.dataset.id = cp.id;
 
-        const px = cp.x * scale;
-        const py = cp.y * scale;
+    wrapper.appendChild(el);
 
-        el.style.left = px + "px";
-        el.style.top  = py + "px";
+    let dragging = false;
 
-        const iconPath = `Icons/${cp.id}.png`;
+    el.addEventListener("mousedown", () => dragging = true);
+    document.addEventListener("mouseup", () => dragging = false);
 
-        fetch(iconPath)
-            .then(res => {
-                if (res.ok) {
-                    el.innerHTML = `<img src="${iconPath}" class="cp-icon">`;
-                } else {
-                    el.textContent = cp.id;
-                }
-            })
-            .catch(() => {
-                el.textContent = cp.id;
-            });
+    document.addEventListener("mousemove", e => {
+        if (!dragging) return;
 
-        if (index < progress) el.classList.add("passed");
-        else el.classList.add("unpassed");
+        const rect = wrapper.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
 
-        if (index === progress) el.classList.add("active");
+        el.style.left = x + "px";
+        el.style.top  = y + "px";
 
-        document.getElementById("map-wrapper").appendChild(el);
+        const cpIndex = cp.id - 1;
+        checkpoints[cpIndex].x = Math.round(x);
+        checkpoints[cpIndex].y = Math.round(y);
     });
+});
 
-    for (let i = 0; i < checkpoints.length - 1; i++) {
-        const a = checkpoints[i];
-        const b = checkpoints[i + 1];
+/* Сохранение */
+document.getElementById("save-btn").onclick = () => {
+    const box = document.getElementById("save-box");
+    box.style.display = "block";
 
-        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-        line.setAttribute("x1", a.x * scale);
-        line.setAttribute("y1", a.y * scale);
-        line.setAttribute("x2", b.x * scale);
-        line.setAttribute("y2", b.y * scale);
+    const json = JSON.stringify(checkpoints, null, 4);
+    box.textContent = json;
 
-        line.style.stroke = i < progress - 1 ? "#00e6c6" : "#ff4d4d";
-        line.setAttribute("class", "route-line");
-
-        svg.appendChild(line);
-    }
-}
-
-renderMap();
+    console.log("Новые координаты:", json);
+};
 </script>
 
 </body>
