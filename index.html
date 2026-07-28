@@ -92,34 +92,103 @@
         .info-section {
             width: 25%;
             height: 100%;
-            background: #f4e8c1;
             background-image: linear-gradient(to bottom, #fdf6e2, #e6d2a5);
             border-left: 4px solid #b8860b;
-            padding: 25px 20px;
+            padding: 20px 18px;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            justify-content: center;
             color: #2b1810;
-            box-shadow: inset 10px 0 20px rgba(0,0,0,0.1);
+            box-shadow: inset 10px 0 20px rgba(0,0,0,0.15);
             overflow: hidden;
         }
 
+        .info-card {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #fdf4dd;
+            border-radius: 10px;
+            border: 2px solid #d4af37;
+            padding: 18px 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .info-card::before,
+        .info-card::after {
+            content: "";
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            border: 2px solid #d4af37;
+        }
+
+        .info-card::before {
+            top: -4px;
+            left: -4px;
+            border-right: none;
+            border-bottom: none;
+            border-radius: 10px 0 0 0;
+        }
+
+        .info-card::after {
+            bottom: -4px;
+            right: -4px;
+            border-left: none;
+            border-top: none;
+            border-radius: 0 0 10px 0;
+        }
+
+        .info-header {
+            margin-bottom: 10px;
+        }
+
         .info-header h2 {
-            font-size: 19px;
+            font-size: 18px;
             color: #8b0000;
-            margin-bottom: 12px;
-            border-bottom: 2px solid #d4af37;
-            padding-bottom: 8px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #d4af37;
+            padding-bottom: 6px;
             text-align: center;
+            letter-spacing: 0.5px;
+        }
+
+        .progress-strip {
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            margin-bottom: 10px;
+        }
+
+        .progress-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #c9a76a;
+            opacity: 0.4;
+        }
+
+        .progress-dot.completed {
+            background: #00bfff;
+            opacity: 0.9;
+        }
+
+        .progress-dot.active {
+            background: #d4af37;
+            box-shadow: 0 0 6px rgba(212,175,55,0.9);
+            opacity: 1;
         }
 
         .info-img-large {
             width: 100%;
-            max-height: 220px;
+            max-height: 190px;
             object-fit: contain;
             display: block;
-            margin: 0 auto 15px auto;
-            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+            margin: 0 auto 12px auto;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.35));
         }
 
         .info-body {
@@ -127,12 +196,25 @@
             line-height: 1.6;
             color: #3b2219;
             overflow-y: auto;
-            max-height: calc(90vh - 350px);
-            padding-right: 5px;
+            max-height: calc(90vh - 360px);
+            padding-right: 4px;
         }
 
         .info-body p {
-            margin-bottom: 12px;
+            margin-bottom: 10px;
+        }
+
+        .quest-box {
+            margin-top: 10px;
+            border-left: 3px solid #8b0000;
+            padding: 8px 10px;
+            background: rgba(139, 0, 0, 0.06);
+            font-style: italic;
+            border-radius: 6px;
+        }
+
+        .quest-box strong {
+            color: #8b0000;
         }
 
         .action-btn {
@@ -141,20 +223,21 @@
             background: #8b0000;
             color: #fff;
             border: none;
-            padding: 12px;
+            padding: 11px;
             font-size: 14px;
             font-family: 'Georgia', serif;
             font-weight: bold;
             border-radius: 6px;
             cursor: pointer;
-            margin-top: 12px;
+            margin-top: 10px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            transition: background 0.2s, transform 0.1s;
+            transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
         }
 
         .action-btn:hover {
             background: #a00000;
-            transform: scale(1.02);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 14px rgba(0,0,0,0.35);
         }
 
         .action-btn.completed-status {
@@ -171,11 +254,12 @@
 
         .info-footer {
             text-align: center;
-            font-size: 12px;
+            font-size: 11px;
             color: #705335;
             font-style: italic;
             border-top: 1px solid #d4af37;
-            padding-top: 8px;
+            padding-top: 6px;
+            margin-top: 8px;
         }
 
         .checkpoint {
@@ -231,7 +315,7 @@
         }
 
         .checkpoint.active-step img {
-            filter: drop-shadow(0 0 12px gold);
+            filter: drop-shadow(0 0 12px rgba(212,175,55,1));
         }
 
         .checkpoint:not(.locked-step):hover {
@@ -302,18 +386,21 @@
         </div>
 
         <div class="info-section">
-            <div class="info-header">
-                <h2 id="info-title">Romantic Adventure!</h2>
-            </div>
-            <img id="info-img" class="info-img-large" src="Icons/1.png" alt="Location Icon" onerror="this.style.display='none';">
-            <div class="info-body">
-                <div id="info-content">
-                    <p>Welcome to your grand Mexico route adventure!</p>
+            <div class="info-card">
+                <div class="info-header">
+                    <div class="progress-strip" id="progress-strip"></div>
+                    <h2 id="info-title">Romantic Adventure!</h2>
                 </div>
-            </div>
-            <div id="info-action"></div>
-            <div class="info-footer">
-                Romantic Adventure • Mexico 2026
+                <img id="info-img" class="info-img-large" src="Icons/1.png" alt="Location Icon" onerror="this.style.display='none';">
+                <div class="info-body">
+                    <div id="info-content">
+                        <p>Welcome to your grand Mexico route adventure!</p>
+                    </div>
+                </div>
+                <div id="info-action"></div>
+                <div class="info-footer">
+                    Romantic Adventure • Mexico 2026
+                </div>
             </div>
         </div>
     </div>
@@ -444,9 +531,22 @@
 
         let currentStep = Number(localStorage.getItem('mexicoRouteProgress')) || 1;
 
+        function buildProgressStrip() {
+            const strip = document.getElementById('progress-strip');
+            strip.innerHTML = "";
+            for (let i = 1; i <= 24; i++) {
+                const dot = document.createElement('div');
+                dot.classList.add('progress-dot');
+                if (i < currentStep) dot.classList.add('completed');
+                else if (i === currentStep) dot.classList.add('active');
+                strip.appendChild(dot);
+            }
+        }
+
         function clickLocation(step) {
             showLocationInfo(step);
             highlightCheckpoints();
+            buildProgressStrip();
         }
 
         function showLocationInfo(step) {
@@ -479,7 +579,7 @@
             if (!data) return;
 
             let contentHTML = `<p>${data.history}</p>`;
-            contentHTML += `<div style="background: rgba(139, 0, 0, 0.1); border-left: 3px solid #8b0000; padding: 10px; margin-top: 10px; font-style: italic;"><strong>🎯 Задание:</strong><br>${data.quest}</div>`;
+            contentHTML += `<div class="quest-box"><strong>🎯 Задание:</strong><br>${data.quest}</div>`;
             
             let actionHTML = `<button class="action-btn" onclick="completeCurrentStep()">Выполнить задание и продвинуться ➔</button>`;
 
@@ -497,6 +597,7 @@
             updateMapDisplay();
             showLocationInfo(currentStep);
             highlightCheckpoints();
+            buildProgressStrip();
         }
 
         function highlightCheckpoints() {
@@ -543,6 +644,7 @@
             updateMapDisplay();
             highlightCheckpoints();
             showLocationInfo(currentStep);
+            buildProgressStrip();
         });
         window.addEventListener('resize', () => {
             updateMapDisplay();
